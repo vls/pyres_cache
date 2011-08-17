@@ -52,20 +52,29 @@ class ResultCache(object):
     def get_result(self):
         return self._result_set
 
-    def make_index(self, index_name, get_func = None, unique = True, reverse = False):
+    def make_index(self, index_name, get_func = None, unique = False, reverse = False):
 
         if unique:
             index = {}
-            if get_func is None or not callable(get_func):
-                for row in self._result_set:
-                    index[row] = row
-
-            else:
+            if get_func and callable(get_func):
                 for row in self._result_set:
                     key = get_func(row)
                     index[key] = row
+            elif isinstance(get_func, int) or isinstance(get_func, basestring):
+                for row in self._result_set:
+                    key = row[get_func]
+                    index[key] = row
+            else:
+                for row in self._result_set:
+                    index[row] = row
         else:
-            keyrowlist = [ (get_func(row), row) for row in self._result_set]
+            if get_func and callable(get_func):
+                keyrowlist = [ (get_func(row), row) for row in self._result_set]
+            elif isinstance(get_func, int) or isinstance(get_func, basestring):
+                # get_func is an index number
+                keyrowlist = [(row[get_func], row) for row in self._result_set]
+            else:
+                keyrowlist = [(row, row) for row in self._result_set]
 
             index = sorted(keyrowlist, reverse = reverse)
 
@@ -119,7 +128,13 @@ class ResultCache(object):
         if value_spec is True:
             return (v for _, v in index)
 
-        opers = map(itemgetter(0), value_spec)
+        if isinstance(value_spec, tuple):
+            value_spec = [value_spec]
+
+        if isinstance(value_spec, list):
+            opers = map(itemgetter(0), value_spec)
+        else:
+            raise TypeError("value_spec must either type 'list' or type 'tuple'")
 
         for oper in opers:
             if oper not in (eq, ne, lt, le, ge, gt):

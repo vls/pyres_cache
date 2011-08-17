@@ -58,7 +58,8 @@ class CacheTestCase(unittest.TestCase):
         cache = result_cache.ResultCache(data)
         import operator
         func = lambda x : operator.getitem(x, 0)
-        cache.make_index('first', func)
+        cache.make_index('first', func, unique = True)
+
 
         index = cache.get_index('first')
 
@@ -98,7 +99,7 @@ class CacheTestCase(unittest.TestCase):
         data = [(x, i) for i, x in enumerate(data)]
         cache = result_cache.ResultCache(data)
 
-        ret = cache.make_index("int", operator.itemgetter(0))
+        ret = cache.make_index("int", operator.itemgetter(0), unique = True)
         self.assertEqual(ret, True)
 
         ret = cache.get_by_index('int', None)
@@ -146,4 +147,118 @@ class CacheTestCase(unittest.TestCase):
 
         ret = cache.get_by_index('int', [(lt, 4), (gt, 4)])
         self.assertEqual(ret, [])
+
+    def test_raw_key(self):
+        data = [1,4,6,3,3,8,3,2,5]
+        cache = result_cache.ResultCache(data)
+
+        ret = cache.make_index("int", None, unique = False)
+        self.assertEqual(ret, True)
+
+        ret = cache.get_by_index('int', None)
+        self.assertEqual(ret, [])
+
+        ret = cache.get_by_index('int', True)
+        self.assertEqual(list(ret), sorted(data))
+
+        ret = cache.get_by_index('int', (eq, 3))
+        self.assertEqual(list(ret), [3,3,3])
+
+        ret = cache.get_by_index('int', [(gt, 3), (eq, 5)])
+        self.assertEqual(list(ret), [5])
+
+        ret = cache.get_by_index('int', [(ge, 5)])
+        self.assertEqual(list(ret), [5, 6, 8])
+
+    def test_int_key(self):
+        #list index
+        ori_data = [1,4,6,3,3,8,3,2,5]
+        data = [[abs(x-4), x] for x in ori_data]
+        cache = result_cache.ResultCache(data)
+
+        ret = cache.make_index("int", 1, unique = False)
+        self.assertEqual(ret, True)
+
+        self.assertEqual(map(itemgetter(0), cache.get_index('int')), sorted(ori_data))
+
+        ret = cache.get_by_index('int', None)
+        self.assertEqual(ret, [])
+
+        ret = cache.get_by_index('int', True)
+        self.assertEqual(list(ret), sorted(data, key=itemgetter(1)))
+
+        ret = cache.get_by_index('int', (gt, 5))
+        self.assertEqual(map(itemgetter(1), ret), [6,8])
+
+        #dict index
+        ori_data = [1,4,6,3,8,2,5]
+        data = [[abs(x-4), x] for x in ori_data]
+        cache = result_cache.ResultCache(data)
+
+        ret = cache.make_index("int", 1, unique = True)
+        self.assertEqual(ret, True)
+
+        self.assertEqual(cache.get_index('int').keys(), sorted(ori_data))
+
+        ret = cache.get_by_index('int', None)
+        self.assertEqual(ret, [])
+
+        ret = cache.get_by_index('int', True)
+        self.assertEqual(list(ret), sorted(data, key=itemgetter(1)))
+
+        ret = cache.get_by_index('int', (eq, 5))
+        self.assertEqual(map(itemgetter(1), ret), [5])
+
+    def test_string_key(self):
+
+        skey = 'num'
+
+        #list index
+        ori_data = [1,4,6,3,3,8,3,2,5]
+        data = [{skey: x} for x in ori_data]
+        cache = result_cache.ResultCache(data)
+
+        ret = cache.make_index("int", skey, unique = False)
+        self.assertEqual(ret, True)
+
+        self.assertEqual(map(itemgetter(0), cache.get_index('int')), sorted(ori_data))
+
+        ret = cache.get_by_index('int', None)
+        self.assertEqual(ret, [])
+
+        ret = cache.get_by_index('int', True)
+        self.assertEqual(list(ret), sorted(data, key=itemgetter(skey)))
+
+        ret = cache.get_by_index('int', (gt, 5))
+        self.assertEqual(map(itemgetter(skey), ret), [6,8])
+
+        #dict index
+        ori_data = [1,4,6,3,8,2,5]
+        data = [{skey: x} for x in ori_data]
+        cache = result_cache.ResultCache(data)
+
+        ret = cache.make_index("int", skey, unique = True)
+        self.assertEqual(ret, True)
+
+        self.assertEqual(cache.get_index('int').keys(), sorted(ori_data))
+
+        ret = cache.get_by_index('int', None)
+        self.assertEqual(ret, [])
+
+        ret = cache.get_by_index('int', True)
+        self.assertEqual(list(ret), sorted(data, key=itemgetter(skey)))
+
+        ret = cache.get_by_index('int', (eq, 5))
+        self.assertEqual(map(itemgetter(skey), ret), [5])
+
+#    def test_composite_index(self):
+#        data = [(1,2), (5, 3), (4,2), (2, 4), (2,3), (2,2), (8,2)]
+#        data = [(x, i) for i, x in enumerate(data)]
+#
+#        cache = result_cache.ResultCache(data)
+#
+#        ret = cache.make_index("comp", [itergetter(0), itergetter(1)], unique = False)
+#        self.assertEqual(ret, True)
+
+        #cache.get_by_index('comp', {itergetter(0) : })
 
