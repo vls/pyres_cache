@@ -6,7 +6,9 @@ pyres_cache
 ## Feature
 
 * Data persistence
+* Data in-memory caching
 * Indexing
+* Quering
 
 ## Introduction
 
