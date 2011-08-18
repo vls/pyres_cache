@@ -18,3 +18,6 @@ pyres_cache
 `MySQLCache` is specialized for MySQLdb result. And it use sqlite memory database for memory cache. 
 So it supports almost full-featured SQL query and indexing.
 
+## Usage
+
+Just place the source file into your source folder and import it!
