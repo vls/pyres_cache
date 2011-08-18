@@ -39,11 +39,8 @@ class DataBase(object):
             self._cursor = None
 
     def GetAll(self, sql, parm = None ):
-        try:
-            self._cursor.execute(sql, parm)
-            self._rows = self._cursor.fetchall()
-        except Exception , e:
-            raise e
+        self._cursor.execute(sql, parm)
+        self._rows = self._cursor.fetchall()
         return self._rows, self._cursor.description
 
 INT = 'INTERGER'
@@ -90,6 +87,7 @@ class SQLiteDB(object):
 
     def _connect(self):
         self._conn = sqlite3.connect(self._db, detect_types = sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
+        self._cursor = self._conn.cursor()
         
     def get_conn(self):
         if not self._conn:
@@ -141,25 +139,41 @@ class SQLiteDB(object):
                 f.write('\n')
         
 
-    def set_mysql_data(self, name, data, desc, syncToDisk = True):
-               
-        create_sql = self.get_create_table_sql(name, desc)
-
+    def create_table(self, name, desc):
         con = self._conn
-
-        insert_sql = self.get_insert_sql(name, desc)
-        print insert_sql
-
+        create_sql = self.get_create_table_sql(name, desc)
         with con:
             con.execute(create_sql)
+
+    def set_mysql_data(self, name, data, desc, syncToDisk = True):
+               
+        con = self._conn
+        insert_sql = self.get_insert_sql(name, desc)
+
+        with con:
             con.executemany(insert_sql, data)
             
-            if syncToDisk:
-                self.dump(con, name+'.data')
+        if syncToDisk:
+            self.dump(con, name+'.data')
+
+    def GetOne(self, sql, param = ()):
+        self._cursor.execute(sql, param)
+        self._rows = self._cursor.fetchone()
+        return self._rows
+
+    def YieldOne(self, sql, param = ()):
+        cursor = self._conn.cursor()
+        cursor.execute(sql, param)
+        for r in cursor:
+            yield r
 
 
-        ret = con.execute("select * from %s" % name).fetchall()
-        print ret
+    def GetAll(self, sql, param = ()):
+        self._cursor.execute(sql, param)
+        self._rows = self._cursor.fetchall()
+
+        return self._rows
+
 
 
 
@@ -167,11 +181,10 @@ class SQLiteDB(object):
 if __name__ == "__main__":
     mysql_db = DataBase("localhost", "gzlzh", "root", "")
     data, desc =  mysql_db.GetAll("select *, b.id as bid from testtype as a left join jointable as b on a.id = b.id")
-    print data
-    print desc
-
 
     sqlite_db = SQLiteDB(':memory:')
-    sqlite_db.set_mysql_data("test", data, desc)
+    name = "test"
+    sqlite_db.create_table(name, desc)
+    sqlite_db.set_mysql_data(name, data, desc)
         
         
