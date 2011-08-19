@@ -7,6 +7,8 @@ import MySQLdb
 from MySQLdb import cursors
 import sqlite3
 
+import os
+
 class DataBase(object):
     def __init__(self , host = None, db = None, user = None, passwd = None, port = 3306, charset = 'utf8', multithread = False):
         self._host = host
@@ -154,7 +156,11 @@ class SQLiteDB(object):
             con.executemany(insert_sql, data)
             
         if syncToDisk:
-            self.dump(con, name+'.data')
+            filename = self._get_filename(name)
+            self.dump(con, filename)
+
+    def _get_filename(self, name):
+        return name + '.data'
 
     def GetOne(self, sql, param = ()):
         self._cursor.execute(sql, param)
@@ -174,17 +180,49 @@ class SQLiteDB(object):
 
         return self._rows
 
+    def _load_file(self, filename):
+        if not os.path.exists(filename):
+            return False
 
+        with open(filename, 'r') as f:
+            with self._conn as conn:
+                cursor = conn.cursor()
+                for line in f:
+                    if not line.startswith('COMMIT'):
+                        cursor.execute(line)
+        return True
 
+    def load(self, name, handler):
+        filename = self._get_filename(name)
+        ret = self._load_file(filename)
+
+        if ret != True:
+            handler(self)
+
+        return True
+
+def import_from_mysql(name, mysql_db, sql, param = None):
+    def handler(sqlitedb):
+        data, desc = mysql_db.GetAll(sql, param)
+        sqlitedb.create_table(name, desc)
+        sqlitedb.set_mysql_data(name, data, desc)
+    return handler
+    
 
 
 if __name__ == "__main__":
-    mysql_db = DataBase("localhost", "gzlzh", "root", "")
-    data, desc =  mysql_db.GetAll("select *, b.id as bid from testtype as a left join jointable as b on a.id = b.id")
 
+    
+
+    mysql_db = DataBase("localhost", "gzlzh", "root", "")
+    sql = "select *, b.id as bid from testtype as a left join jointable as b on a.id = b.id"
     sqlite_db = SQLiteDB(':memory:')
+
     name = "test"
-    sqlite_db.create_table(name, desc)
-    sqlite_db.set_mysql_data(name, data, desc)
+    sqlite_db.load(name, import_from_mysql(name, mysql_db, sql))
+
+    print sqlite_db.GetAll("select * from %s" % name)
+
+
         
         
