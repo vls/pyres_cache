@@ -7,7 +7,7 @@ import MySQLdb
 from MySQLdb import cursors
 import sqlite3
 
-import os
+import os, sys
 
 class DataBase(object):
     def __init__(self , host = None, db = None, user = None, passwd = None, port = 3306, charset = 'utf8', multithread = False):
@@ -173,6 +173,8 @@ class SQLiteDB(object):
         for r in cursor:
             yield r
 
+    def Execute(self, sql, param = ()):
+        return self._cursor.execute(sql, param)
 
     def GetAll(self, sql, param = ()):
         self._cursor.execute(sql, param)
@@ -201,9 +203,12 @@ class SQLiteDB(object):
 
         return True
 
-def import_from_mysql(name, mysql_db, sql, param = None):
+def import_from_mysql(name, mysql_db, sql, param = None, debug = False):
     def handler(sqlitedb):
         data, desc = mysql_db.GetAll(sql, param)
+        if debug:
+            print >> sys.stderr, desc
+            print >> sys.stderr, data
         sqlitedb.create_table(name, desc)
         sqlitedb.set_mysql_data(name, data, desc)
     return handler
